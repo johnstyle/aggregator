@@ -1,0 +1,17 @@
+{
+    "name": "johnstyle/aggregator",
+    "type": "library",
+    "description": "PHP feed aggregator",
+    "keywords": ["PHP 5", "PHP5", "feed", "rss", "rss 2.0", "atom"],
+    "homepage": "https://github.com/johnstyle/aggregator",
+    "license": "GPL-3.0",
+    "require": {
+        "php": ">=5.4.0",
+        "kertz/twitteroauth": "dev-master"
+    },
+    "autoload": {
+        "psr-4": {
+            "Johnstyle\\": "src/Johnstyle"
+        }
+    }
+}
