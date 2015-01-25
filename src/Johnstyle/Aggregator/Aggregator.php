@@ -22,7 +22,7 @@ class Aggregator
 {
     const LANGUAGE = 'en-US';
     const CHARSET = 'UTF-8';
-    const CACHE_TIME = 3600;
+    const CACHE_TIME = 600;
 
     protected static $tmpPath;
 
