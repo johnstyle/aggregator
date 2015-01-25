@@ -24,6 +24,8 @@ class Aggregator
     const CHARSET = 'UTF-8';
     const CACHE_TIME = 3600;
 
+    protected static $tmpPath;
+
     /**
      * @param string   $title
      * @param string   $description
@@ -31,7 +33,7 @@ class Aggregator
      */
     public static function display($title, $description, \closure $callback)
     {
-        $file = sys_get_temp_dir() . '/' . md5($title);
+        $file = static::getTmpPath() . md5($title) . '.xml';
 
         if(!file_exists($file)
             || filemtime($file) > time() + static::CACHE_TIME) {
@@ -59,5 +61,26 @@ class Aggregator
     public static function getCurrentDate()
     {
         return date('c');
+    }
+
+    /**
+     * @param string $path
+     */
+    public static function setTmpPath($path)
+    {
+        static::$tmpPath = $path;
+    }
+
+    /**
+     * @return string
+     */
+    public static function getTmpPath()
+    {
+        if(!is_null(static::$tmpPath)) {
+
+            return static::$tmpPath;
+        }
+
+        return sys_get_temp_dir() . '/';
     }
 }
