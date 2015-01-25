@@ -12,6 +12,8 @@
 
 namespace Johnstyle\Aggregator;
 
+use Johnstyle\Aggregator\Model\Service\Feed;
+
 /**
  * Class Aggregator
  *
@@ -20,67 +22,291 @@ namespace Johnstyle\Aggregator;
  */
 class Aggregator
 {
-    const LANGUAGE = 'en-US';
-    const CHARSET = 'UTF-8';
-    const CACHE_TIME = 600;
+    const DEFAULT_LANGUAGE = 'fr-FR';
+    const DEFAULT_CHARSET = 'UTF-8';
+    const DEFAULT_CACHE_TIME = 600;
 
-    protected static $tmpPath;
+    /** @var string $publicPath */
+    protected static $publicPath;
+
+    /** @var string $language */
+    protected $language;
+
+    /** @var string $charset */
+    protected $charset;
+
+    /** @var string $cacheTime */
+    protected $cacheTime;
+
+    /** @var string $file */
+    protected $file;
+
+    /** @var string $contentType */
+    protected $contentType;
+
+    /** @var array $items */
+    protected $items = array();
+
+    /** @var bool $stop */
+    protected $stop = false;
 
     /**
-     * @param string   $title
-     * @param string   $description
-     * @param \closure $callback
+     * @param  string $filename
+     * @param  string $language
+     * @param  string $charset
+     * @param  int    $cacheTime
+     * @throws AggregatorException
      */
-    public static function display($title, $description, \closure $callback)
+    public function __construct($filename, $language = self::DEFAULT_LANGUAGE, $charset = self::DEFAULT_CHARSET, $cacheTime = self::DEFAULT_CACHE_TIME)
     {
-        $file = static::getTmpPath() . md5($title) . '.xml';
+        $this->file = static::getPublicPath() . $filename;
+        $this->contentType = substr($filename, strpos($filename, '.')+1);
+        $this->language = $language;
+        $this->charset = $charset;
+        $this->cacheTime = $cacheTime;
 
-        if(!file_exists($file)
-            || filemtime($file) < time() - static::CACHE_TIME) {
+        if(!in_array($this->contentType, array('rss', 'atom', 'json'))) {
 
-            $items = call_user_func_array($callback, array());
-
-            ob_start(function($content) use($file) {
-                file_put_contents($file, $content);
-                return null;
-            });
-
-            include 'View/rss2.php';
-
-            ob_end_flush();
+            throw new AggregatorException('Invalid content-type');
         }
 
-        header('Content-Type: application/rss+xml; charset=' . static::CHARSET);
-        header('Content-Size: ' . filesize($file));
-        readfile($file);
+        if(file_exists($this->file)
+            && filemtime($this->file) > time() - $this->cacheTime) {
+
+            $this->stop();
+        }
     }
 
     /**
-     * @return string
+     * @param array $items
      */
-    public static function getCurrentDate()
+    public function setItems(array $items)
     {
-        return date('c');
+        $this->items = array_merge($this->items, $items);
     }
 
     /**
      * @param string $path
      */
-    public static function setTmpPath($path)
+    public static function setPublicPath($path)
     {
-        static::$tmpPath = $path;
+        static::$publicPath = $path;
     }
 
     /**
      * @return string
+     * @throws AggregatorException
      */
-    public static function getTmpPath()
+    public static function getPublicPath()
     {
-        if(!is_null(static::$tmpPath)) {
+        if(is_null(static::$publicPath)) {
 
-            return static::$tmpPath;
+            throw new AggregatorException('Configure Aggregator public path');
         }
 
-        return sys_get_temp_dir() . '/';
+        return static::$publicPath;
+    }
+
+    /**
+     * @param  mixed $feeds
+     * @return static
+     */
+    public function parseFeed($feeds)
+    {
+        if($this->isStoped()) {
+
+            return $this;
+        }
+
+        if(!is_array($feeds)) {
+
+            $feeds = array(
+                'default' => $feeds
+            );
+        }
+
+        foreach($feeds as $source=>$feed) {
+
+            $items = Feed::fetch(simplexml_load_file($feed));
+
+            foreach($items as &$item) {
+
+                $item['__source'] = $source;
+            }
+
+            $this->setItems($items);
+        }
+
+        return $this;
+    }
+
+    /**
+     * @param  callable $callback
+     * @return $this
+     */
+    public function parseCallback(\closure $callback)
+    {
+        if($this->isStoped()) {
+
+            return $this;
+        }
+
+        call_user_func_array($callback, array(&$this));
+
+        return $this;
+    }
+
+    /**
+     * @param  callable $callback
+     * @return $this
+     */
+    public function loop(\closure $callback)
+    {
+        if($this->isStoped()) {
+
+            return $this;
+        }
+
+        foreach($this->items as $i=>&$item) {
+
+            call_user_func_array($callback, array(&$item));
+
+            if(is_null($item)) {
+
+                unset($this->items[$i]);
+            }
+        }
+
+        return $this;
+    }
+
+    /**
+     * @param  string     $name
+     * @param  int|string $order
+     * @return $this
+     */
+    public function sort($name = 'pubDate', $order = SORT_DESC)
+    {
+        if($this->isStoped()) {
+
+            return $this;
+        }
+
+        $arraySort = array();
+
+        foreach($this->items as $i=>$item) {
+
+            $arraySort[$i] = array_key_exists($name, $item) ? $item[$name] : null;
+        }
+
+        array_multisort($arraySort, $order, SORT_STRING, $this->items);
+
+        return $this;
+    }
+
+    /**
+     * @param  int $count
+     * @return $this
+     */
+    public function truncate($count = 20)
+    {
+        if($this->isStoped()) {
+
+            return $this;
+        }
+
+        $this->items = array_slice($this->items, 0, $count);
+
+        return $this;
+    }
+
+    /**
+     * @return $this
+     */
+    public function followLinks()
+    {
+        if($this->isStoped()) {
+
+            return $this;
+        }
+
+        foreach($this->items as &$item) {
+
+            $ch = curl_init();
+            curl_setopt($ch, CURLOPT_URL, $item['link']);
+            curl_setopt($ch, CURLOPT_HEADER, true);
+            curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_exec($ch);
+
+            $url = curl_getinfo($ch, CURLINFO_EFFECTIVE_URL);
+
+            if ('' !== (string)$url) {
+
+                $item['link'] = $url;
+            }
+        }
+
+        return $this;
+    }
+
+    /**
+     * @param  array $options
+     * @return $this
+     */
+    public function save(array $options)
+    {
+        if($this->isStoped()) {
+
+            return $this;
+        }
+
+        $options = array_merge(array(
+            'title' => null,
+            'description' => null
+        ), $options);
+
+        $path = dirname($this->file);
+
+        if(!is_dir($path)) {
+
+            mkdir($path, 0775, true);
+        }
+
+        switch($this->contentType) {
+
+            case 'atom':
+            case 'rss':
+
+                ob_start(function($content) {
+                    file_put_contents($this->file, $content, LOCK_EX);
+                    return null;
+                });
+
+                include 'View/' . $this->contentType . '.php';
+
+                ob_end_flush();
+                break;
+
+            case 'json':
+
+                file_put_contents($this->file, json_encode($this->items), LOCK_EX);
+                break;
+        }
+
+        return $this;
+    }
+
+    protected function stop()
+    {
+        $this->stop = true;
+    }
+
+    /**
+     * @return bool
+     */
+    protected function isStoped()
+    {
+        return $this->stop === true;
     }
 }

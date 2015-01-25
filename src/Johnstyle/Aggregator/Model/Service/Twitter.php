@@ -69,12 +69,12 @@ class Twitter extends Model
                 $model->title = $title;
                 $model->description = $data->text;
                 $model->link = $link;
-                $model->pubDate = date('c', strtotime($data->created_at));
+                $model->pubDate = $data->created_at;
                 $model->guid = 'https://twitter.com/' . $data->user->screen_name . '/status/' . $data->id;
                 $model->categories = $tags;
                 $model->enclosures = $media;
 
-                $items[] = $model;
+                $items[] = $model->toArray();
             }
         }
 
