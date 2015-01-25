@@ -36,7 +36,7 @@ class Aggregator
         $file = static::getTmpPath() . md5($title) . '.xml';
 
         if(!file_exists($file)
-            || filemtime($file) > time() + static::CACHE_TIME) {
+            || filemtime($file) < time() - static::CACHE_TIME) {
 
             $items = call_user_func_array($callback, array());
 
