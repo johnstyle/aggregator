@@ -127,7 +127,7 @@ class Aggregator
 
         foreach($feeds as $source=>$feed) {
 
-            $items = Feed::fetch(simplexml_load_file($feed));
+            $items = Feed::fetch((new Curl())->get($feed)->content('xml'));
 
             foreach($items as &$item) {
 
@@ -232,14 +232,7 @@ class Aggregator
 
         foreach($this->items as &$item) {
 
-            $ch = curl_init();
-            curl_setopt($ch, CURLOPT_URL, $item['link']);
-            curl_setopt($ch, CURLOPT_HEADER, true);
-            curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-            curl_exec($ch);
-
-            $url = curl_getinfo($ch, CURLINFO_EFFECTIVE_URL);
+            $url = (new Curl())->getFollowLink($item['link']);
 
             if ('' !== (string)$url) {
 
