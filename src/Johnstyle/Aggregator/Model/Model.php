@@ -72,7 +72,7 @@ abstract class Model
 
                 case 'pubDate':
 
-                    $value = date('c', strtotime($value));
+                    $value = date('r', strtotime($value));
                     break;
             }
 
@@ -103,7 +103,7 @@ abstract class Model
 
         } else {
 
-            $value = trim(strip_tags((string) $value));
+            $value = trim(preg_replace('#[[:space:]]+#', ' ', strip_tags((string) $value)));
         }
 
         return $value;

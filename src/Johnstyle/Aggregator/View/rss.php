@@ -16,18 +16,18 @@
         <title><?php echo $options['title']; ?></title>
         <description><?php echo $options['description']; ?></description>
         <language><?php echo $this->language; ?></language>
-        <pubDate><?php echo date('c'); ?></pubDate>
-        <lastBuildDate><?php echo date('c'); ?></lastBuildDate>
+        <pubDate><?php echo date('r'); ?></pubDate>
+        <lastBuildDate><?php echo date('r'); ?></lastBuildDate>
         <?php foreach($this->items as $item): ?>
             <item>
-                <title><?php echo $item['title']; ?></title>
+                <title><![CDATA[<?php echo $item['title']; ?>]]></title>
                 <link><?php echo $item['link']; ?></link>
                 <guid><?php echo $item['guid']; ?></guid>
                 <pubDate><?php echo $item['pubDate']; ?></pubDate>
-                <description><?php echo $item['description']; ?></description>
+                <description><![CDATA[<?php echo $item['description']; ?>]]></description>
                 <?php if(count($item['categories'])): ?>
                     <?php foreach($item['categories'] as $category): ?>
-                        <category><?php echo $category; ?></category>
+                        <category><![CDATA[<?php echo $category; ?>]]></category>
                     <?php endforeach; ?>
                 <?php endif; ?>
                 <?php if(count($item['enclosures'])): ?>
