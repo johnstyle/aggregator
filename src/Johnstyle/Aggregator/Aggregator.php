@@ -38,6 +38,9 @@ class Aggregator
     /** @var string $cacheTime */
     protected $cacheTime;
 
+    /** @var string $filename */
+    protected $filename;
+
     /** @var string $file */
     protected $file;
 
@@ -59,6 +62,7 @@ class Aggregator
      */
     public function __construct($filename, $language = self::DEFAULT_LANGUAGE, $charset = self::DEFAULT_CHARSET, $cacheTime = self::DEFAULT_CACHE_TIME)
     {
+        $this->filename = $filename;
         $this->file = static::getPublicPath() . $filename;
         $this->contentType = substr($filename, strpos($filename, '.')+1);
         $this->language = $language;

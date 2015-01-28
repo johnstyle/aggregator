@@ -14,6 +14,7 @@
 <rss version="2.0">
     <channel>
         <title><?php echo $options['title']; ?></title>
+        <link rel="self">/<?php echo $this->filename; ?></link>
         <description><?php echo $options['description']; ?></description>
         <language><?php echo $this->language; ?></language>
         <pubDate><?php echo date('r'); ?></pubDate>
